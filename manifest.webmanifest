@@ -1,0 +1,8 @@
+{
+  "name": "Reddit Random",
+  "short_name": "Reddit Random",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#151515",
+  "theme_color": "#151515"
+}

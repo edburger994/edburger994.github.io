@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#151515">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Reddit Random">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Reddit Random</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#151515;--panel:#1d1d1d;--panel2:#262626;--line:#383838;
+  --text:#f2f2f2;--muted:#aaa;--accent:#ff5a36;--danger:#ff6b6b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden}
+button,input{font:inherit}
+button{border:0;border-radius:12px;background:#333;color:#fff;padding:12px 14px;font-weight:700}
+button:active{transform:scale(.98)}
+button.primary{background:var(--accent)}
+button.ghost{background:#2a2a2a}
+button:disabled{opacity:.45}
+#app{height:100%;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom)}
+#top{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);
+  border-bottom:1px solid var(--line);min-height:56px
+}
+#top > button{
+  position:relative;z-index:20;min-width:48px;min-height:44px;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent
+}
+#titleWrap{min-width:0;flex:1}
+#title{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#meta{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#preview{position:relative;flex:1;min-height:0;background:#0d0d0d;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#preview img,#preview video{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
+#preview video{width:100%;height:100%;object-fit:contain;background:#000}
+#preview iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#111}
+#empty{padding:28px;text-align:center;color:var(--muted);line-height:1.45;max-width:520px}
+#counter{position:absolute;right:10px;top:10px;z-index:5;background:rgba(0,0,0,.68);
+  padding:6px 9px;border-radius:999px;font-size:11px;color:#ddd}
+#bottom{
+  background:var(--panel);border-top:1px solid var(--line);
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:grid;gap:8px
+}
+#mainButtons{display:grid;grid-template-columns:1fr 1.45fr 1fr;gap:8px}
+#secondary{display:flex;gap:8px;align-items:center}
+#secondary button{flex:1;padding:10px 8px;font-size:13px}
+#autoWrap{display:flex;align-items:center;gap:6px;background:var(--panel2);border-radius:12px;padding:5px 7px}
+#seconds{width:48px;border:0;background:transparent;color:#fff;text-align:center;outline:none}
+#sheet{
+  position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.68);display:none;align-items:flex-end
+}
+#sheet.open{display:flex}
+#sheetCard{
+  width:100%;max-height:88vh;overflow:auto;background:#202020;border-radius:20px 20px 0 0;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px rgba(0,0,0,.35)
+}
+#sheetCard h2{margin:0 0 12px;font-size:20px}
+.section{background:#292929;border:1px solid #3a3a3a;border-radius:14px;padding:12px;margin:10px 0}
+.section h3{margin:0 0 8px;font-size:14px}
+.section p{margin:6px 0;color:#c6c6c6;font-size:13px;line-height:1.4}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.textInput{
+  width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#171717;color:#fff;outline:none
+}
+.small{font-size:12px;color:var(--muted)}
+#fileInput{display:none}
+.status{margin-top:8px;font-size:12px;color:#bdbdbd;word-break:break-word}
+.toggle{display:flex;gap:8px}
+.toggle button{flex:1;font-size:12px;padding:9px 8px}
+.toggle button.active{background:#555}
+@media (orientation:landscape) and (max-height:600px){
+  #top{min-height:48px;padding:5px 8px}
+  #bottom{padding:5px 8px calc(5px + env(safe-area-inset-bottom))}
+  button{padding:9px 10px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <div id="titleWrap">
+      <div id="title">Reddit Random</div>
+      <div id="meta">Import a copy of saved_items.json</div>
+    </div>
+    <button id="quickImportBtn" class="ghost" aria-label="Import Library">Import</button>
+    <button id="menuBtn" class="ghost" aria-label="Menu">☰</button>
+  </div>
+
+  <div id="preview">
+    <div id="empty">
+      <strong>Reddit Random for iPhone</strong><br><br>
+      Tap <strong>Import</strong> and choose a copy of
+      <code>saved_items.json</code> from Files/iCloud Drive.<br><br>
+      This mobile version is completely separate from the Windows app.
+    </div>
+    <div id="counter" hidden></div>
+  </div>
+
+  <div id="bottom">
+    <div id="mainButtons">
+      <button id="prevBtn" class="ghost" disabled>Previous</button>
+      <button id="randomBtn" class="primary" disabled>Random</button>
+      <button id="openBtn" class="ghost" disabled>Reddit ↗</button>
+    </div>
+    <div id="secondary">
+      <div id="autoWrap">
+        <span class="small">Auto</span>
+        <input id="seconds" inputmode="decimal" value="10" aria-label="Auto random seconds">
+        <span class="small">sec</span>
+      </div>
+      <button id="autoBtn" class="ghost" disabled>Start Auto</button>
+      <button id="modeBtn" class="ghost" disabled>Smart View</button>
+    </div>
+  </div>
+</div>
+
+<div id="sheet">
+  <div id="sheetCard">
+    <div class="row">
+      <h2 style="flex:1">Reddit Random</h2>
+      <button id="closeSheet" class="ghost" style="flex:0 0 auto">Done</button>
+    </div>
+
+    <div class="section">
+      <h3>Library</h3>
+      <p>Use a <strong>copy</strong> of the Windows app's <code>saved_items.json</code>. Importing here never changes the Windows file.</p>
+      <div class="row">
+        <button id="importBtn" class="primary">Import Library</button>
+        <button id="clearBtn" class="ghost">Clear iPhone Copy</button>
+      </div>
+      <input id="fileInput" type="file" accept=".json,application/json">
+      <div id="libraryStatus" class="status">No library loaded.</div>
+    </div>
+
+    <div class="section">
+      <h3>Test a Reddit link</h3>
+      <input id="testUrl" class="textInput" placeholder="Paste a Reddit post URL">
+      <div class="row" style="margin-top:8px">
+        <button id="loadTest" class="ghost">Load Post</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Playback mode</h3>
+      <div class="toggle">
+        <button data-mode="smart" class="active">Smart</button>
+        <button data-mode="reddit">Reddit Embed</button>
+        <button data-mode="media">Saved Media</button>
+      </div>
+      <p><strong>Smart</strong> uses saved video directly when possible and Reddit's embed for other posts. Reddit Embed is useful for galleries and external players.</p>
+    </div>
+
+    <div class="section">
+      <h3>iPhone setup</h3>
+      <p>For the best iPhone experience, open this page in Safari and choose <strong>Share → Add to Home Screen</strong>. Safari storage is used to remember the imported library when the page is served from a normal web address.</p>
+      <p class="small">This hosted version is designed to run directly in Safari over HTTPS. No server-side code is required.</p>
+    </div>
+
+    <div class="section">
+      <h3>Gestures</h3>
+      <p>Swipe <strong>left</strong> on the preview for Random. Swipe <strong>right</strong> for Previous.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const preview = $("preview");
+  const empty = $("empty");
+  const counter = $("counter");
+  const title = $("title");
+  const meta = $("meta");
+  const randomBtn = $("randomBtn");
+  const prevBtn = $("prevBtn");
+  const openBtn = $("openBtn");
+  const autoBtn = $("autoBtn");
+  const secondsInput = $("seconds");
+  const modeBtn = $("modeBtn");
+  const sheet = $("sheet");
+  const libraryStatus = $("libraryStatus");
+
+  let items = [];
+  let current = null;
+  let remaining = [];
+  let history = [];
+  let historyIndex = -1;
+  let autoTimer = null;
+  function safeLocalGet(key, fallback = "") {
+    try { return localStorage.getItem(key) || fallback; }
+    catch (_) { return fallback; }
+  }
+  function safeLocalSet(key, value) {
+    try { localStorage.setItem(key, value); } catch (_) {}
+  }
+
+  let mode = safeLocalGet("rr_mode", "smart");
+
+  // ----- IndexedDB -----
+  const DB_NAME = "reddit-random-mobile";
+  const STORE = "state";
+
+  function openDb() {
+    return new Promise((resolve, reject) => {
+      if (!("indexedDB" in window)) {
+        reject(new Error("IndexedDB unavailable"));
+        return;
+      }
+      let req;
+      try {
+        req = indexedDB.open(DB_NAME, 1);
+      } catch (err) {
+        reject(err);
+        return;
+      }
+      req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function dbSet(key, value) {
+    const db = await openDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).put(value, key);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  }
+
+  async function dbGet(key) {
+    const db = await openDb();
+    const value = await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const req = tx.objectStore(STORE).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return value;
+  }
+
+  async function dbDelete(key) {
+    const db = await openDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).delete(key);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  }
+
+  function normalizeItems(data) {
+    if (Array.isArray(data)) return data.filter(x => x && typeof x === "object");
+    if (data && Array.isArray(data.items)) return data.items.filter(x => x && typeof x === "object");
+    return [];
+  }
+
+  function cleanRedditUrl(url) {
+    try {
+      const u = new URL(url);
+      if (!u.hostname.includes("reddit.com") && !u.hostname.includes("redditmedia.com")) return url;
+      let path = u.pathname;
+      if (u.hostname.includes("redditmedia.com")) {
+        const m = path.match(/(\/(?:r\/[^/]+\/)?comments\/[^/]+\/[^/]+\/?)/i);
+        if (m) path = m[1];
+      }
+      return "https://www.reddit.com" + path;
+    } catch (_) {
+      return url || "";
+    }
+  }
+
+  function redditEmbed(url) {
+    try {
+      const clean = cleanRedditUrl(url);
+      const u = new URL(clean);
+      return "https://www.redditmedia.com" + u.pathname +
+        "?ref_source=embed&ref=share&embed=true";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function classifyMedia(item) {
+    const m = (item.media_url || "").toLowerCase();
+    const t = (item.media_type || "").toLowerCase();
+    if (t === "video" || /\.(mp4|webm)(\?|$)/i.test(m) || m.includes("v.redd.it")) return "video";
+    if (t === "image" || t === "gif" || /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(m) ||
+        m.includes("i.redd.it") || m.includes("preview.redd.it")) return "image";
+    return "";
+  }
+
+  function setControls() {
+    const has = items.length > 0;
+    randomBtn.disabled = !has;
+    autoBtn.disabled = !has;
+    modeBtn.disabled = !has && !current;
+    prevBtn.disabled = historyIndex <= 0;
+    openBtn.disabled = !current || !current.url;
+    counter.hidden = !has;
+    if (has) counter.textContent = `${items.length} saved`;
+  }
+
+  function render(item) {
+    current = item;
+    preview.querySelectorAll("img,video,iframe").forEach(el => el.remove());
+    empty.hidden = true;
+
+    const itemTitle = item.title || "(saved Reddit item)";
+    title.textContent = itemTitle;
+    const sub = item.subreddit ? `r/${item.subreddit}` : "";
+    const mt = (item.media_type || item.type || "post").toUpperCase();
+    meta.textContent = [sub, mt].filter(Boolean).join(" • ");
+
+    const kind = classifyMedia(item);
+    const postUrl = cleanRedditUrl(item.url || "");
+    const mediaUrl = item.media_url || "";
+
+    let use = mode;
+    if (use === "smart") {
+      // iPhone Safari is much more restrictive about Reddit/redditmedia
+      // cross-origin iframes, especially when this page is opened locally.
+      // Prefer the imported saved media for ALL normal images/GIFs/videos.
+      // Only use Reddit's embed when there is no usable saved media URL.
+      use = (mediaUrl && kind) ? "media" : "reddit";
+    }
+
+    if (use === "media" && mediaUrl) {
+      if (kind === "video") {
+        const v = document.createElement("video");
+        v.src = mediaUrl;
+        v.controls = true;
+        v.muted = true;
+        v.autoplay = true;
+        v.playsInline = true;
+        v.loop = true;
+        v.setAttribute("playsinline", "");
+        v.setAttribute("webkit-playsinline", "");
+        preview.appendChild(v);
+        meta.textContent = [sub, mt, "DIRECT MEDIA"].filter(Boolean).join(" • ");
+        v.play().catch(() => {});
+      } else {
+        const img = document.createElement("img");
+        img.src = mediaUrl;
+        img.alt = itemTitle;
+        img.onload = () => {
+          meta.textContent = [sub, mt, "DIRECT MEDIA"].filter(Boolean).join(" • ");
+        };
+        img.onerror = () => {
+          img.remove();
+          empty.hidden = false;
+          empty.innerHTML =
+            "<strong>Safari could not load this saved media directly.</strong><br><br>" +
+            "Tap <strong>Reddit ↗</strong> to open the original post, or try " +
+            "<strong>Reddit View</strong> from the menu.";
+        };
+        preview.appendChild(img);
+      }
+    } else {
+      renderRedditFallback(postUrl);
+    }
+
+    setControls();
+  }
+
+  function renderRedditFallback(postUrl) {
+    const url = redditEmbed(postUrl);
+    if (!url) {
+      empty.hidden = false;
+      empty.innerHTML = "This item has no usable Reddit URL.";
+      return;
+    }
+    const iframe = document.createElement("iframe");
+    meta.textContent = (meta.textContent ? meta.textContent + " • " : "") + "REDDIT EMBED";
+    iframe.src = url;
+    iframe.allow = "autoplay; fullscreen; picture-in-picture";
+    iframe.setAttribute("allowfullscreen", "");
+    iframe.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
+    preview.appendChild(iframe);
+  }
+
+  function refillRemaining() {
+    remaining = items.map((_, i) => i);
+  }
+
+  function randomItem(addHistory = true) {
+    if (!items.length) return;
+    if (!remaining.length) refillRemaining();
+
+    const pickAt = Math.floor(Math.random() * remaining.length);
+    const idx = remaining.splice(pickAt, 1)[0];
+    const item = items[idx];
+
+    if (addHistory) {
+      if (historyIndex < history.length - 1) history = history.slice(0, historyIndex + 1);
+      history.push(idx);
+      historyIndex = history.length - 1;
+    }
+    render(item);
+  }
+
+  function previous() {
+    if (historyIndex <= 0) return;
+    historyIndex--;
+    render(items[history[historyIndex]]);
+  }
+
+  function startStopAuto() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      autoBtn.textContent = "Start Auto";
+      return;
+    }
+    let seconds = Number(secondsInput.value);
+    if (!Number.isFinite(seconds) || seconds < 1) seconds = 1;
+    secondsInput.value = String(seconds);
+    randomItem(true);
+    autoTimer = setInterval(() => randomItem(true), seconds * 1000);
+    autoBtn.textContent = "Stop Auto";
+  }
+
+  async function importFile(file) {
+    const text = await file.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      throw new Error("That file is not valid JSON.");
+    }
+    const imported = normalizeItems(data);
+    if (!imported.length) throw new Error("No saved Reddit items were found in that JSON file.");
+
+    items = imported;
+    refillRemaining();
+    history = [];
+    historyIndex = -1;
+    current = null;
+    await dbSet("items", items);
+    libraryStatus.textContent = `${items.length} saved items imported and stored on this iPhone/browser.`;
+    meta.textContent = `${items.length} saved items`;
+    setControls();
+    randomItem(true);
+  }
+
+  async function clearLibrary() {
+    stopAuto();
+    items = [];
+    remaining = [];
+    history = [];
+    historyIndex = -1;
+    current = null;
+    await dbDelete("items");
+    preview.querySelectorAll("img,video,iframe").forEach(el => el.remove());
+    empty.hidden = false;
+    empty.innerHTML = `<strong>Library cleared.</strong><br><br>Import another copy of <code>saved_items.json</code> when you're ready.`;
+    title.textContent = "Reddit Random";
+    meta.textContent = "No library loaded";
+    libraryStatus.textContent = "No library loaded.";
+    setControls();
+  }
+
+  function stopAuto() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      autoBtn.textContent = "Start Auto";
+    }
+  }
+
+  function updateModeUI() {
+    document.querySelectorAll("[data-mode]").forEach(b => {
+      b.classList.toggle("active", b.dataset.mode === mode);
+    });
+    const names = {smart:"Smart View",reddit:"Reddit View",media:"Saved Media"};
+    modeBtn.textContent = names[mode] || "Smart View";
+    safeLocalSet("rr_mode", mode);
+  }
+
+  // ----- events -----
+  function openMenu(e) {
+    if (e) e.preventDefault();
+    sheet.classList.add("open");
+  }
+
+  $("menuBtn").addEventListener("click", openMenu);
+  $("menuBtn").addEventListener("touchend", openMenu, {passive:false});
+  $("quickImportBtn").addEventListener("click", () => $("fileInput").click());
+  $("quickImportBtn").addEventListener("touchend", (e) => {
+    e.preventDefault();
+    $("fileInput").click();
+  }, {passive:false});
+
+  $("closeSheet").onclick = () => sheet.classList.remove("open");
+  sheet.addEventListener("click", e => { if (e.target === sheet) sheet.classList.remove("open"); });
+
+  $("importBtn").onclick = () => $("fileInput").click();
+  $("fileInput").addEventListener("change", async e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    libraryStatus.textContent = "Importing…";
+    try {
+      await importFile(file);
+      sheet.classList.remove("open");
+    } catch (err) {
+      libraryStatus.textContent = `Import failed: ${err.message || err}`;
+    } finally {
+      e.target.value = "";
+    }
+  });
+
+  $("clearBtn").onclick = async () => {
+    if (confirm("Clear only the iPhone/browser copy of the library?")) await clearLibrary();
+  };
+
+  randomBtn.onclick = () => randomItem(true);
+  prevBtn.onclick = previous;
+  autoBtn.onclick = startStopAuto;
+  openBtn.onclick = () => { if (current?.url) window.open(cleanRedditUrl(current.url), "_blank"); };
+
+  modeBtn.onclick = () => {
+    const order = ["smart","reddit","media"];
+    mode = order[(order.indexOf(mode) + 1) % order.length];
+    updateModeUI();
+    if (current) render(current);
+  };
+
+  document.querySelectorAll("[data-mode]").forEach(b => {
+    b.onclick = () => {
+      mode = b.dataset.mode;
+      updateModeUI();
+      if (current) render(current);
+    };
+  });
+
+  $("loadTest").onclick = () => {
+    const url = $("testUrl").value.trim();
+    if (!url) return;
+    const item = {url, title:"Test Reddit post", subreddit:"", type:"post", media_type:"", media_url:""};
+    render(item);
+    sheet.classList.remove("open");
+  };
+
+  $("testUrl").addEventListener("keydown", e => {
+    if (e.key === "Enter") $("loadTest").click();
+  });
+
+  document.addEventListener("keydown", e => {
+    const tag = (document.activeElement?.tagName || "").toLowerCase();
+    if (e.code === "Space" && !["input","textarea","select"].includes(tag) &&
+        !document.activeElement?.isContentEditable) {
+      e.preventDefault();
+      randomItem(true);
+    }
+  });
+
+  // Swipe: left = Random, right = Previous.
+  let touchX = null, touchY = null;
+  preview.addEventListener("touchstart", e => {
+    if (e.touches.length !== 1) return;
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+  }, {passive:true});
+  preview.addEventListener("touchend", e => {
+    if (touchX == null || !e.changedTouches.length) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    const dy = e.changedTouches[0].clientY - touchY;
+    touchX = touchY = null;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+    if (dx < 0) randomItem(true); else previous();
+  }, {passive:true});
+
+  // Initial load.
+  updateModeUI();
+  (async () => {
+    try {
+      const saved = await dbGet("items");
+      if (Array.isArray(saved) && saved.length) {
+        items = saved;
+        refillRemaining();
+        libraryStatus.textContent = `${items.length} saved items stored on this iPhone/browser.`;
+        meta.textContent = `${items.length} saved items`;
+        setControls();
+      } else {
+        setControls();
+      }
+    } catch (_) {
+      libraryStatus.textContent = "Browser storage unavailable; you can still import for this session.";
+      setControls();
+    }
+  })();
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
